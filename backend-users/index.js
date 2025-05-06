@@ -1,8 +1,20 @@
+require("dotenv").config();
+const sequelize = require("./lib/sequelize");
+const userModel = require("./models/user");
 const express = require("express");
 const cors = require("cors");
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+sequelize
+  .sync()
+  .then(() => {
+    console.log("Database synced successfully");
+  })
+  .catch((err) => {
+    console.error("Error syncing database:", err);
+  });
 
 const users = [
   {
@@ -42,21 +54,32 @@ const users = [
   },
 ];
 
-app.get("/users", (req, res) => {
-  res.json({ users });
-});
-
-app.get("/users/:id", (req, res) => {
-  let id = parseInt(req.params.id);
-  let user = users.find((user) => user.id === id);
-  if (user) {
-    res.json({ user });
-  } else {
-    res.status(404).json({ message: "User Not found" });
+app.get("/users", async (req, res) => {
+  try {
+    const users = await userModel.findAll();
+    res.json({ users });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Error fetching all users" });
   }
 });
 
-const PORT = 3000;
+app.get("/users/:id", async (req, res) => {
+  let id = parseInt(req.params.id);
+  try {
+    let user = await userModel.findByPk(id);
+    if (user) {
+      res.json({ user });
+    } else {
+      res.status(404).json({ message: "User Not found" });
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Error fetching user" });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log("Server is running on port", PORT);
